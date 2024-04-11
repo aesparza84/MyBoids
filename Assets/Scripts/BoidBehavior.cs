@@ -72,8 +72,6 @@ public class BoidBehavior : MonoBehaviour
         //Velocity = Direction.normalized * Speed * Time.deltaTime;
 
         //Update transform position
-
-        Debug.Log(Direction);
         transform.position += transform.forward * Speed * Time.deltaTime;
     }
 
@@ -190,7 +188,7 @@ public class BoidBehavior : MonoBehaviour
         //Vector3 finalDirection = (transform.position - AvgCenterPosition) + AvgHeading + SpacingVector; 
         //finalDirection += SpacingVector + AvgCenterPosition;
 
-        Debug.DrawRay(transform.position, finalDirection.normalized, Color.red);
+        Debug.DrawRay(transform.position, finalDirection.normalized * 3, Color.red);
         
         return finalDirection.normalized;
     }

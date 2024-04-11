@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class BoidBehavior : MonoBehaviour
 {
@@ -24,9 +25,6 @@ public class BoidBehavior : MonoBehaviour
     private Collider[] Neighboids;
     private Collider myCollider;
 
-    [Range(0, 10)]
-    [SerializeField] private int DetectionRays;
-
     private const int BitMask = (1 << 0);
 
     //Toggle for boids to follow/NOT Follow 'center' point
@@ -37,7 +35,11 @@ public class BoidBehavior : MonoBehaviour
     public bool Seperation;
     public bool Cohesion;
 
+    private int DebugID;
+
     [SerializeField] private bool SelfUpdate;
+
+    [SerializeField] private GameObject DebugOj;
     private void Start()
     {
         //Setting the boid buffer
@@ -47,6 +49,8 @@ public class BoidBehavior : MonoBehaviour
         TargetObject = GameObject.Find("Target").transform;
 
         myCollider = GetComponent<Collider>();
+
+        DebugID = UnityEngine.Random.Range(0, 100);
     }
 
     private void Update()
@@ -68,6 +72,8 @@ public class BoidBehavior : MonoBehaviour
         //Velocity = Direction.normalized * Speed * Time.deltaTime;
 
         //Update transform position
+
+        Debug.Log(Direction);
         transform.position += transform.forward * Speed * Time.deltaTime;
     }
 
@@ -93,9 +99,13 @@ public class BoidBehavior : MonoBehaviour
         {
             if (Neighboids[i] != myCollider)
             {
+                Debug.DrawRay(transform.position, (Neighboids[i].transform.position - transform.position), Color.green);
+
+
                 //Boids will try and aim towards center of neighbor cluster
                 if (Cohesion)
                 {
+                    //Totals the positions of neighbors
                     AvgCenterPosition += Neighboids[i].transform.position;
                 }
 
@@ -135,6 +145,15 @@ public class BoidBehavior : MonoBehaviour
             if (AvgCenterPosition != Vector3.zero)
             {
                 AvgCenterPosition /= neighboids;
+
+                Vector3 DirToAvg = AvgCenterPosition-transform.position;
+                finalDirection += DirToAvg;
+                Debug.DrawRay(transform.position, DirToAvg, Color.magenta);
+            }
+
+            if (DebugOj != null)
+            {
+                DebugOj.transform.position = transform.position + AvgCenterPosition;
             }
         }
 
@@ -161,13 +180,15 @@ public class BoidBehavior : MonoBehaviour
             if (SpacingVector != Vector3.zero)
             {
                 SpacingVector /= neighboids;
+
+                finalDirection += SpacingVector;
             }
 
             Debug.DrawRay(transform.position, SpacingVector * 1.5f, Color.cyan);
         }
 
         //Vector3 finalDirection = (transform.position - AvgCenterPosition) + AvgHeading + SpacingVector; 
-        finalDirection += SpacingVector;
+        //finalDirection += SpacingVector + AvgCenterPosition;
 
         Debug.DrawRay(transform.position, finalDirection.normalized, Color.red);
         
@@ -176,7 +197,7 @@ public class BoidBehavior : MonoBehaviour
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.green;
-        //Gizmos.DrawWireSphere(transform.position, LocalRadius);
+        Gizmos.DrawWireSphere(transform.position, LocalRadius);
 
         Gizmos.color = Color.red;
         //Gizmos.DrawWireSphere(transform.position, MinClumpDistance);

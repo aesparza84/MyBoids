@@ -17,7 +17,7 @@ public class BoidBehavior : MonoBehaviour
     [SerializeField] private float Speed;
 
     private const float LocalRadius = 10.0f;
-    private const float MinClumpDistance = 2.0f;
+    private const float MinClumpDistance = 4.0f;
 
     //Buffer for checking neighboring Boids
     [SerializeField] private int MaxNeighbors;
@@ -105,7 +105,7 @@ public class BoidBehavior : MonoBehaviour
                     AvgHeading += Neighboids[i].transform.forward;
                 }
 
-                //Boids will not collide with eachother
+                //Boids will not collide with eachother--DONE
                 if (Seperation)
                 {
                     float dist = Vector3.Distance(transform.position, Neighboids[i].transform.position);
@@ -127,6 +127,15 @@ public class BoidBehavior : MonoBehaviour
                 }
             } 
             */
+        }
+
+        //Averages position to get direction to 'center' of cluster
+        if (Cohesion)
+        {
+            if (AvgCenterPosition != Vector3.zero)
+            {
+                AvgCenterPosition /= neighboids;
+            }
         }
 
         //Average Direction of surrounding neighbors. HEADING
@@ -152,21 +161,10 @@ public class BoidBehavior : MonoBehaviour
             if (SpacingVector != Vector3.zero)
             {
                 SpacingVector /= neighboids;
-
-                //Make it negative to steer away from neighbors
-                SpacingVector *= -1;
             }
+
+            Debug.DrawRay(transform.position, SpacingVector * 1.5f, Color.cyan);
         }
-
-        //Averages position to get direction to 'center' of cluster
-        if (Cohesion)
-        {
-            if (AvgCenterPosition != Vector3.zero)
-            {
-                AvgCenterPosition /= neighboids;
-            }
-        }       
-        
 
         //Vector3 finalDirection = (transform.position - AvgCenterPosition) + AvgHeading + SpacingVector; 
         finalDirection += SpacingVector;
@@ -178,9 +176,9 @@ public class BoidBehavior : MonoBehaviour
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, LocalRadius);
+        //Gizmos.DrawWireSphere(transform.position, LocalRadius);
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, MinClumpDistance);
+        //Gizmos.DrawWireSphere(transform.position, MinClumpDistance);
     }
 }

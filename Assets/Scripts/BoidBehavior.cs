@@ -6,10 +6,7 @@ using UnityEngine.UIElements;
 public class BoidBehavior : MonoBehaviour
 {
     //Direction Vector
-    private Vector3 Direction;
-
-    //Velocity vector
-    public Vector3 Velocity;
+    [SerializeField]private Vector3 Direction;
 
     //The target positon for ALL boids
     private Transform TargetObject;
@@ -20,12 +17,14 @@ public class BoidBehavior : MonoBehaviour
     private const float LocalRadius = 10.0f;
     private const float MinClumpDistance = 4.0f;
 
+    private const float HeadingInfluence = 0.3f;
+
     //Buffer for checking neighboring Boids
     [SerializeField] private int MaxNeighbors;
     private Collider[] Neighboids;
     private Collider myCollider;
 
-    private const int BitMask = (1 << 0);
+    private const int BitMask = ( (1 << 0) | (1<<6) );
 
     //Toggle for boids to follow/NOT Follow 'center' point
     public bool FreeFly;
@@ -34,6 +33,11 @@ public class BoidBehavior : MonoBehaviour
     public bool Alignment;
     public bool Seperation;
     public bool Cohesion;
+
+    [Range(1, 100)]
+    [SerializeField] private float AvoidanceStrength = 1;
+    [Range(1, 100)]
+    [SerializeField] private float CohesionStrength = 1;
 
     private int DebugID;
 
@@ -69,16 +73,14 @@ public class BoidBehavior : MonoBehaviour
         Quaternion newLook = Quaternion.LookRotation(Direction, transform.up);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, newLook, Time.deltaTime * 100.0f);
 
-        //Velocity = Direction.normalized * Speed * Time.deltaTime;
-
         //Update transform position
         transform.position += transform.forward * Speed * Time.deltaTime;
     }
 
     private Vector3 GetValidDirection()
     {
-        Vector3 AvgHeading = Vector3.zero;
-        Vector3 AvgCenterPosition = Vector3.zero;
+        Vector3 AvgHeading = transform.forward;
+        Vector3 AvgCenterPosition = transform.position;
         Vector3 SpacingVector = Vector3.zero;
         Vector3 finalDirection = transform.forward;
 
@@ -116,12 +118,14 @@ public class BoidBehavior : MonoBehaviour
                 //Boids will not collide with eachother--DONE
                 if (Seperation)
                 {
-                    float dist = Vector3.Distance(transform.position, Neighboids[i].transform.position);
+                    Vector3 hit = Neighboids[i].ClosestPointOnBounds(transform.position);
+                    float dist = Vector3.Distance(transform.position, hit);
 
                     if (dist < MinClumpDistance)
                     {
                         //Direction TO index boid
                         SpacingVector += (transform.position - Neighboids[i].transform.position);
+                        Debug.DrawRay(transform.position, SpacingVector, Color.cyan);
                     }
                 }
             }
@@ -145,7 +149,7 @@ public class BoidBehavior : MonoBehaviour
                 AvgCenterPosition /= neighboids;
 
                 Vector3 DirToAvg = AvgCenterPosition-transform.position;
-                finalDirection += DirToAvg;
+                finalDirection += (DirToAvg.normalized * CohesionStrength);
                 Debug.DrawRay(transform.position, DirToAvg, Color.magenta);
             }
 
@@ -161,6 +165,7 @@ public class BoidBehavior : MonoBehaviour
             if (AvgHeading != Vector3.zero)
             {
                 AvgHeading /= neighboids;
+                
             }
             else
             {
@@ -169,6 +174,11 @@ public class BoidBehavior : MonoBehaviour
                 float ez = UnityEngine.Random.Range(-360, 360);
                 AvgHeading = new Vector3(ex, ey, ez);
             }
+
+            Vector3 dirTo = AvgHeading - transform.position;
+            finalDirection += (dirTo * HeadingInfluence).normalized;
+
+            Debug.DrawRay(transform.position, dirTo, Color.magenta);
         }
 
         //Averages the seperation vector
@@ -179,10 +189,10 @@ public class BoidBehavior : MonoBehaviour
             {
                 SpacingVector /= neighboids;
 
-                finalDirection += SpacingVector;
+                finalDirection += (SpacingVector.normalized * AvoidanceStrength);
             }
 
-            Debug.DrawRay(transform.position, SpacingVector * 1.5f, Color.cyan);
+            //Debug.DrawRay(transform.position, SpacingVector * 1.5f, Color.cyan);
         }
 
         //Vector3 finalDirection = (transform.position - AvgCenterPosition) + AvgHeading + SpacingVector; 
@@ -198,6 +208,6 @@ public class BoidBehavior : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, LocalRadius);
 
         Gizmos.color = Color.red;
-        //Gizmos.DrawWireSphere(transform.position, MinClumpDistance);
+        Gizmos.DrawWireSphere(transform.position, MinClumpDistance);
     }
 }

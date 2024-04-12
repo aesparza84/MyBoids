@@ -245,13 +245,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b32ed4988a1a984285bf179fd915bb4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Velocity: {x: 0, y: 0, z: 0}
-  Speed: 5
+  Direction: {x: 0, y: 0, z: 0}
+  Speed: 9
   MaxNeighbors: 4
   FreeFly: 0
   Alignment: 0
   Seperation: 0
   Cohesion: 0
+  AvoidanceStrength: 63.9
+  CohesionStrength: 0
   SelfUpdate: 0
   DebugOj: {fileID: 0}
 --- !u!135 &6651272014128166596

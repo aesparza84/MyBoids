@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -9,15 +10,15 @@ public class BoidBehavior : MonoBehaviour
     [SerializeField]private Vector3 Direction;
 
     //The target positon for ALL boids
-    private Transform TargetObject;
+    public GameObject TargetObject;
 
     //Flight speed of the boid
-    [SerializeField] private float Speed;
+    public float Speed;
 
     private const float LocalRadius = 10.0f;
     private const float MinClumpDistance = 4.0f;
 
-    private const float HeadingInfluence = 0.3f;
+    public float HeadingInfluence = 0.3f;
 
     //Buffer for checking neighboring Boids
     [SerializeField] private int MaxNeighbors;
@@ -34,10 +35,12 @@ public class BoidBehavior : MonoBehaviour
     public bool Seperation;
     public bool Cohesion;
 
-    [Range(1, 100)]
+    [Range(0, 1)]
     [SerializeField] private float AvoidanceStrength = 1;
-    [Range(1, 100)]
+    [Range(0, 1)]
     [SerializeField] private float CohesionStrength = 1;
+    [Range(0, 1)]
+    [SerializeField] private float AlignmentStrength = 1;
 
     private int DebugID;
 
@@ -50,7 +53,7 @@ public class BoidBehavior : MonoBehaviour
         Neighboids = new Collider[MaxNeighbors];
 
         //Find Target position
-        TargetObject = GameObject.Find("Target").transform;
+        TargetObject = GameObject.Find("Target");
 
         myCollider = GetComponent<Collider>();
 
@@ -68,16 +71,22 @@ public class BoidBehavior : MonoBehaviour
     {
         //See nearby Boids
         //Set direction to avoid neighboids
+            //Direction = OldGetValidDirection();
         Direction = GetValidDirection();
+        if (TargetObject != null && !FreeFly)
+        {
+            Vector3 DirToObj = TargetObject.transform.position - transform.position;
+            Direction += DirToObj.normalized;
+        }
 
         Quaternion newLook = Quaternion.LookRotation(Direction, transform.up);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, newLook, Time.deltaTime * 100.0f);
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, newLook, Time.deltaTime * 350.0f);
 
         //Update transform position
         transform.position += transform.forward * Speed * Time.deltaTime;
     }
 
-    private Vector3 GetValidDirection()
+    private Vector3 OldGetValidDirection()
     {
         Vector3 AvgHeading = transform.forward;
         Vector3 AvgCenterPosition = transform.position;
@@ -87,17 +96,17 @@ public class BoidBehavior : MonoBehaviour
         //ADD the desired 'center direction' to the direction
         if (!FreeFly && TargetObject != null)
         {
-            AvgHeading += (transform.position - TargetObject.position);
+            AvgHeading += (transform.position - TargetObject.transform.position);
         }
 
         //Check for nearby boids
         //
         //Get average of all nearby boids Vector-HEADINGS
         int neighboids = Physics.OverlapSphereNonAlloc(transform.position, LocalRadius, Neighboids);
-        
+
         for (int i = 0; i < neighboids; i++)
         {
-            if (Neighboids[i] != myCollider)
+            if (Neighboids[i] != myCollider && !Neighboids[i].gameObject.CompareTag("Obstacle"))
             {
                 Debug.DrawRay(transform.position, (Neighboids[i].transform.position - transform.position), Color.green);
 
@@ -148,7 +157,7 @@ public class BoidBehavior : MonoBehaviour
             {
                 AvgCenterPosition /= neighboids;
 
-                Vector3 DirToAvg = AvgCenterPosition-transform.position;
+                Vector3 DirToAvg = AvgCenterPosition - transform.position;
                 finalDirection += (DirToAvg.normalized * CohesionStrength);
                 Debug.DrawRay(transform.position, DirToAvg, Color.magenta);
             }
@@ -160,9 +169,11 @@ public class BoidBehavior : MonoBehaviour
         }
 
         //Average Direction of surrounding neighbors. HEADING
-        if (Alignment)
+        if (Alignment && neighboids > 1)
         {
-            if (AvgHeading != Vector3.zero)
+
+            /*
+            if (AvgHeading != transform.forward)
             {
                 AvgHeading /= neighboids;
                 
@@ -173,7 +184,8 @@ public class BoidBehavior : MonoBehaviour
                 float ey = UnityEngine.Random.Range(-360, 360);
                 float ez = UnityEngine.Random.Range(-360, 360);
                 AvgHeading = new Vector3(ex, ey, ez);
-            }
+            }*/
+            AvgHeading /= neighboids;
 
             Vector3 dirTo = AvgHeading - transform.position;
             finalDirection += (dirTo * HeadingInfluence).normalized;
@@ -199,9 +211,145 @@ public class BoidBehavior : MonoBehaviour
         //finalDirection += SpacingVector + AvgCenterPosition;
 
         Debug.DrawRay(transform.position, finalDirection.normalized * 3, Color.red);
-        
+
         return finalDirection.normalized;
     }
+
+    private Vector3 GetValidDirection()
+    {
+        //Avg Heading of neighbors
+            //Vector3 AvgHeading = transform.forward;
+        Vector3 AvgHeading = Vector3.zero;
+
+        //Center of all boids relative to THIS
+            //Vector3 AvgCenterPosition = Vector3.zero;
+        Vector3 AvgCenterPosition = Vector3.zero;
+
+        //Away vector (Sums all away vectors)
+        Vector3 SpacingVector = Vector3.zero;
+        
+        //Final direction that we will add to
+        Vector3 finalDir = Vector3.zero;
+
+        int neighboids = Physics.OverlapSphereNonAlloc(transform.position, LocalRadius, Neighboids);
+        int trueBoids = 0;
+        int CollisionCount = 0;
+
+        //ALL objects withint the local radius
+        for (int i = 0; i < neighboids; i++)
+        {
+            //If the index is Exclusively another BOID
+            if (Neighboids[i] != myCollider && !Neighboids[i].gameObject.CompareTag("Obstacle"))
+            {
+                //Debug.DrawRay(transform.position, (Neighboids[i].transform.position - transform.position), Color.green);
+
+                //Add neighbors Forward
+                AvgHeading += Neighboids[i].transform.forward;
+
+                //Add the neighbors Position [Center calcs.]
+                AvgCenterPosition += Neighboids[i].transform.position;
+
+                trueBoids++;
+            }
+            
+            //If the index is anything other than THIS
+            if (Neighboids[i] != myCollider || Neighboids[i].gameObject.CompareTag("Obstacle"))
+            {
+                //Add the neighbors Position [Seperation calcs.]
+                Vector3 hit = Neighboids[i].ClosestPointOnBounds(transform.position);
+                Vector3 DirToHit = hit - transform.position;
+                float dist = Vector3.Distance(transform.position, hit);
+
+                    //Debug.DrawRay(transform.position, DirToHit, Color.red);
+
+                if (dist < MinClumpDistance && Vector3.Dot(transform.forward, DirToHit) > -0.4f)
+                {
+
+                    //Direction TO index Object
+                    SpacingVector += (transform.position - hit).normalized;
+
+                    CollisionCount++;
+                }
+            }
+        }
+
+        Debug.Log("True Boids "+trueBoids);
+
+        //Aligns towrad average Heading of neighbors
+        if (Alignment)
+        {
+            Vector3 avg = AlignmentVector(trueBoids, AvgHeading);
+            finalDir += avg * AlignmentStrength;
+        }
+
+        //Moves toward center of neighbors
+        if (Cohesion)
+        {
+            Vector3 coh = CohesionVector(trueBoids, AvgCenterPosition);
+            finalDir += (transform.forward+coh).normalized * CohesionStrength;
+        }
+        else
+        {
+            //Will add THIS boids forward if no Cohesion
+            finalDir += transform.forward;
+        }
+
+        //Calculates based on ALL collsions detected
+        if (Seperation)
+        {
+            Vector3 sepDir = SeperationVector(CollisionCount,SpacingVector);
+            finalDir += sepDir * AvoidanceStrength;
+            Debug.DrawRay(transform.position, sepDir.normalized * AvoidanceStrength, Color.cyan);
+        }
+
+        return finalDir.normalized;
+    }
+
+    
+    private Vector3 AlignmentVector(int totalBoids, Vector3 AvgHeading)
+    {
+        Vector3 alignment = Vector3.zero;
+
+        if (totalBoids > 0)
+        {
+            alignment = AvgHeading / (totalBoids + 1); //+1 = this instance
+        }
+
+        return alignment.normalized;
+    }
+    private Vector3 CohesionVector(int totalBoids, Vector3 AvgCenterPosition)
+    {
+        //Averages position to get direction to 'center' of cluster
+        Vector3 DirToAvg = Vector3.zero;
+
+        if (totalBoids > 0)
+        {
+            AvgCenterPosition /= totalBoids;
+
+            DirToAvg = AvgCenterPosition - transform.position;
+        }
+        else
+        {
+            //Generate a random direction
+            float x = UnityEngine.Random.Range(-360, 360);
+            float y = UnityEngine.Random.Range(-360, 360);
+            float z = UnityEngine.Random.Range(-360, 360);
+            DirToAvg = new Vector3(x, y, z);
+        }
+
+        Debug.DrawRay(transform.position, DirToAvg.normalized, Color.magenta);
+
+        return DirToAvg.normalized;
+    }
+    
+    private Vector3 SeperationVector(int collisionCount, Vector3 SpacingVector) 
+    {
+        Vector3 SepDir = Vector3.zero;
+        SepDir = (SpacingVector / collisionCount);
+
+        return SepDir.normalized;
+    }
+   
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.green;

@@ -247,13 +247,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Direction: {x: 0, y: 0, z: 0}
   Speed: 9
-  MaxNeighbors: 4
+  HeadingInfluence: 0.3
+  MaxNeighbors: 30
   FreeFly: 0
   Alignment: 0
   Seperation: 0
   Cohesion: 0
-  AvoidanceStrength: 63.9
-  CohesionStrength: 0
+  AvoidanceStrength: 1
+  CohesionStrength: 0.136
+  AlignmentStrength: 0.301
   SelfUpdate: 0
   DebugOj: {fileID: 0}
 --- !u!135 &6651272014128166596
